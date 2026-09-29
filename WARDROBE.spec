@@ -10,7 +10,6 @@ a = Analysis(
     pathex=[str(ROOT)],
     binaries=[],
     datas=[
-        (str(ROOT / 'gardirob.txt'), '.'),
         (str(ROOT / 'update_config.json'), '.'),
     ],
     hiddenimports=[],
