@@ -9,6 +9,7 @@ block_cipher = None
 # copied as-is so the packaged EXE can load PNG sidebar icons from RESOURCE_DIR.
 datas = [
     (str(ROOT / 'update_config.json'), '.'),
+    (str(ROOT / 'version.json'), '.'),
     (str(ROOT / 'wardrobe.ico'), '.'),
     (str(ROOT / 'icons'), 'icons'),
 ]

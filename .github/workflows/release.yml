@@ -31,6 +31,13 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt pyinstaller
 
+      - name: Stamp application version
+        shell: powershell
+        run: |
+          $version = $env:GITHUB_REF_NAME -replace '^v', ''
+          @{ version = $version } | ConvertTo-Json | Set-Content version.json -Encoding utf8
+          Get-Content version.json
+
       - name: Build WARDROBE
         shell: cmd
         run: pyinstaller --clean --noconfirm WARDROBE.spec

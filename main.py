@@ -17,7 +17,7 @@ from datetime import datetime
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer, Signal, QSettings, QUrl, QSize
-from PySide6.QtGui import QDesktopServices, QKeySequence, QShortcut, QIcon
+from PySide6.QtGui import QDesktopServices, QKeySequence, QShortcut, QIcon, QPainter, QColor, QPixmap
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QGridLayout, QLabel, QPushButton, QFrame, QScrollArea, QLineEdit,
@@ -27,11 +27,7 @@ from PySide6.QtWidgets import (
 
 
 BASE_DIR = Path(__file__).resolve().parent
-# PyInstaller one-dir builds may place bundled resources under an _internal
-# directory. Using _MEIPASS when frozen keeps bundled icons/config reachable
-# from both the PyCharm source run and the packaged EXE.
-RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", BASE_DIR))
-LEGACY_DATA_FILE = RESOURCE_DIR / "gardirob.txt"
+LEGACY_DATA_FILE = BASE_DIR / "gardirob.txt"
 
 # Keep user data outside the application folder so installed/upgraded Windows
 # builds can replace the executable without touching the user's wardrobe data.
@@ -45,10 +41,26 @@ DB_FILE = APP_DATA_DIR / "wardrobe.db"
 BACKUP_DIR = APP_DATA_DIR / "backups"
 LOG_DIR = APP_DATA_DIR / "logs"
 LEGACY_ARCHIVE_DIR = APP_DATA_DIR / "legacy"
-APP_VERSION = os.environ.get("WARDROBE_APP_VERSION", "1.0.0").strip() or "1.0.0"
-UPDATE_CONFIG_FILE = RESOURCE_DIR / "update_config.json"
-ICON_DIR = RESOURCE_DIR / "icons"
-APP_ICON_FILE = RESOURCE_DIR / "wardrobe.ico"
+VERSION_FILE = BASE_DIR / "version.json"
+
+def _load_app_version():
+    env_version = os.environ.get("WARDROBE_APP_VERSION", "").strip()
+    if env_version:
+        return env_version.lstrip("v")
+    try:
+        if VERSION_FILE.exists():
+            data = json.loads(VERSION_FILE.read_text(encoding="utf-8"))
+            value = str(data.get("version", "")).strip()
+            if value:
+                return value.lstrip("v")
+    except Exception:
+        pass
+    return "0.0.0"
+
+APP_VERSION = _load_app_version()
+UPDATE_CONFIG_FILE = BASE_DIR / "update_config.json"
+ICON_DIR = BASE_DIR / "icons"
+APP_ICON_FILE = BASE_DIR / "wardrobe.ico"
 
 def _load_update_repository():
     configured = os.environ.get("WARDROBE_GITHUB_REPO", "").strip()
@@ -176,13 +188,12 @@ QFrame#Sidebar {{ background: {c['sidebar']}; border-right: 1px solid {c['border
 QLabel#Brand {{ font-size: 22px; font-weight: 800; color: {c['text']}; }}
 QLabel#BrandMark {{ background: {c['accent']}; color: {c['white']}; border-radius: 13px; font-size: 16px; font-weight: 800; }}
 QLabel#NavSection {{ color: {c['muted']}; font-size: 11px; font-weight: 700; }}
-QPushButton#NavButton, QPushButton#NavButtonActive {{ border: none; border-radius: 11px; text-align: left; padding: 10px 14px; min-height: 42px; font-weight: 650; }}
+QPushButton#NavButton, QPushButton#NavButtonActive {{ border: none; border-radius: 10px; text-align: left; padding: 10px 13px; font-weight: 650; }}
 QPushButton#NavButton {{ background: transparent; color: {c['nav_text']}; }}
 QPushButton#NavButton:hover {{ background: {c['nav_hover']}; color: {c['text']}; }}
 QPushButton#NavButtonActive {{ background: {c['accent_soft']}; color: {c['accent_dark']}; }}
-QLabel#PageTitle {{ font-size: 27px; font-weight: 800; letter-spacing: -0.2px; }}
+QLabel#PageTitle {{ font-size: 28px; font-weight: 800; }}
 QLabel#Subtitle, QLabel#SectionMuted, QLabel#SmallMuted, QLabel#Status {{ color: {c['muted']}; }}
-QLabel#Subtitle {{ font-size: 13px; }}
 QLabel#Status {{ font-size: 11px; }}
 QLineEdit#GlobalSearch, QLineEdit#Search, QLineEdit#Input, QTextEdit#Input {{ background: {c['input']}; color: {c['input_text']}; border: 1px solid {c['border']}; border-radius: 12px; padding: 10px 13px; selection-background-color: {c['accent_soft']}; selection-color: {c['text']}; }}
 QComboBox#Input {{ background: {c['input']}; color: {c['input_text']}; border: 1px solid {c['border']}; border-radius: 12px; padding: 0 42px 0 13px; min-height: 44px; selection-background-color: {c['accent_soft']}; selection-color: {c['text']}; }}
@@ -192,13 +203,13 @@ QComboBox#Input::drop-down {{ subcontrol-origin: padding; subcontrol-position: t
 QComboBox#Input QAbstractItemView {{ background: {c['input']}; color: {c['text']}; border: 1px solid {c['border']}; border-radius: 10px; padding: 6px; selection-background-color: {c['accent_soft']}; selection-color: {c['text']}; outline: none; }}
 QComboBox#Input QAbstractItemView::item {{ min-height: 34px; padding: 7px 10px; border-radius: 8px; }}
 QComboBox#Input QAbstractItemView::item:hover {{ background: {c['hover']}; }}
-QFrame#StatCard, QFrame#CategoryCard, QFrame#ItemCard, QFrame#FormCard, QFrame#FeatureCard, QFrame#OutfitCard, QFrame#TodayHero {{ background: {c['panel']}; border: 1px solid {c['border']}; border-radius: 16px; }}
+QFrame#StatCard, QFrame#CategoryCard, QFrame#ItemCard, QFrame#FormCard, QFrame#FeatureCard, QFrame#OutfitCard, QFrame#TodayHero {{ background: {c['panel']}; border: 1px solid {c['border']}; border-radius: 15px; }}
 QFrame#CategoryCard:hover, QFrame#ItemCard:hover, QFrame#OutfitCard:hover, QFrame#FeatureCard:hover {{ background: {c['hover']}; border: 1px solid {c['soft_hover_border']}; }}
 QLabel#StatNumber {{ font-size: 29px; font-weight: 800; }}
 QLabel#StatLabel {{ color: {c['muted']}; font-size: 11px; font-weight: 700; }}
 QLabel#StatNumberCompact {{ font-size: 22px; font-weight: 800; }}
 QLabel#StatLabelCompact {{ color: {c['muted']}; font-size: 11px; font-weight: 700; }}
-QLabel#SectionTitle {{ font-size: 16px; font-weight: 750; letter-spacing: -0.1px; }}
+QLabel#SectionTitle {{ font-size: 16px; font-weight: 750; }}
 QLabel#CategoryName {{ font-size: 15px; font-weight: 700; }}
 QLabel#CategoryCount, QLabel#CategoryDetails, QLabel#CategoryMetric, QLabel#ItemDescription {{ color: {c['muted']}; }}
 QLabel#CategoryMetric, QLabel#CategoryCount, QLabel#CategoryDetails {{ font-size: 12px; font-weight: 600; }}
@@ -224,7 +235,7 @@ QPushButton#Secondary:pressed {{ background: {c['border']}; }}
 QPushButton#Delete {{ background: {c['danger_soft']}; color: {c['danger']}; border: 1px solid transparent; border-radius: 11px; padding: 0 14px; min-height: 40px; font-weight: 650; }}
 QPushButton#Delete:hover {{ background: {c['delete_hover']}; }}
 QPushButton#Back, QPushButton#FilterClear {{ background: transparent; color: {c['accent_dark']}; border: none; padding: 7px 2px; font-weight: 650; }}
-QPushButton#IconButton {{ background: {c['secondary']}; color: {c['secondary_text']}; border: 1px solid {c['border']}; border-radius: 10px; min-width: 36px; max-width: 36px; min-height: 36px; max-height: 36px; font-size: 16px; }}
+QPushButton#IconButton {{ background: {c['secondary']}; color: {c['secondary_text']}; border: 1px solid {c['border']}; border-radius: 10px; min-width: 34px; max-width: 34px; min-height: 34px; max-height: 34px; font-size: 16px; }}
 QPushButton#IconButton:hover {{ background: {c['accent_soft']}; color: {c['accent_dark']}; border-color: {c['soft_hover_border']}; }}
 QPushButton#Back, QPushButton#FilterClear {{ background: transparent; color: {c['accent_dark']}; border: none; padding: 6px 0; font-weight: 650; }}
 QFrame#UsageTrack {{ background: {c['track']}; border: none; border-radius: 6px; min-height: 12px; max-height: 12px; }}
@@ -859,7 +870,25 @@ class WardrobeRepository:
     @property
     def total_uses(self): return sum(self.usage_counts.values())
     def all_items(self): return [item for c in self.categories for item in c.items]
-    def get_category(self, name): return self._category_map.get(name.casefold())
+    def get_category(self, name):
+        key = " ".join(str(name or "").strip().casefold().split())
+        if not key:
+            return None
+        direct = self._category_map.get(key)
+        if direct is not None:
+            return direct
+        for category in self.categories:
+            display_key = " ".join(display_category_name(category.name).strip().casefold().split())
+            if display_key == key:
+                return category
+        return None
+
+    def resolve_category_name(self, name):
+        clean = " ".join(str(name or "").strip().split())
+        if not clean:
+            return ""
+        category = self.get_category(clean)
+        return category.name if category is not None else clean
     def find_item(self, number): return self._item_map.get(number, (None, None))
     def find_item_by_uid(self, uid): return self._uid_map.get(uid, (None, None))
     def next_number(self): return max(self._item_map.keys(), default=0) + 1
@@ -920,6 +949,12 @@ class WardrobeRepository:
                         self.conn.execute("""UPDATE clothing SET category_id=?,number=?,name=?,color=?,description=?,season=?,occasion=?,style=?,formality=?,fit=?,availability=?,favorite=?,wear_count=?,updated_at=? WHERE uid=?""", vals + (item.uid,))
                     else:
                         self.conn.execute("""INSERT INTO clothing(category_id,number,name,color,description,season,occasion,style,formality,fit,availability,favorite,wear_count,updated_at,uid) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", vals + (item.uid,))
+            existing_category_keys = {" ".join(c.name.strip().casefold().split()) for c in self.categories}
+            for row in self.conn.execute("SELECT id,name FROM categories").fetchall():
+                key = " ".join(str(row["name"]).strip().casefold().split())
+                if key not in existing_category_keys:
+                    self.conn.execute("DELETE FROM categories WHERE id=?", (row["id"],))
+
             existing_uids = set(self._all_uids_from_categories())
             db_uids = [r["uid"] for r in self.conn.execute("SELECT uid FROM clothing").fetchall()]
             for uid in set(db_uids) - existing_uids:
@@ -1163,6 +1198,29 @@ class WardrobeRepository:
         self.saved_outfits = [o for o in self.saved_outfits if o["uids"]]
         self.usage_history = [h for h in self.usage_history if h["uid"] != item.uid]
         self.save(False, "Delete clothing")
+
+    def delete_category(self, category_name):
+        category = self.get_category(category_name)
+        if category is None:
+            raise ValueError("Category was not found.")
+        self._capture_snapshot("Delete category")
+        removed_uids = {item.uid for item in category.items}
+        removed_count = len(removed_uids)
+        self.categories = [c for c in self.categories if c is not category]
+        self.usage_counts = {uid: count for uid, count in self.usage_counts.items() if uid not in removed_uids}
+        self.favorites.difference_update(removed_uids)
+        self.usage_history = [row for row in self.usage_history if row["uid"] not in removed_uids]
+        cleaned_outfits = []
+        for outfit in self.saved_outfits:
+            uids = [uid for uid in outfit.get("uids", []) if uid not in removed_uids]
+            if uids:
+                updated = dict(outfit)
+                updated["uids"] = uids
+                cleaned_outfits.append(updated)
+        self.saved_outfits = cleaned_outfits
+        self._reindex()
+        self.save(False, "Delete category")
+        return category.name, removed_count
 
     def update(self, number, category_name, name, color, description, metadata=None):
         item, old_category = self.find_item(number)
@@ -1411,8 +1469,8 @@ class HomePage(QWidget):
 
     def build_ui(self):
         outer = QVBoxLayout(self)
-        outer.setContentsMargins(8, 8, 12, 12)
-        outer.setSpacing(16)
+        outer.setContentsMargins(6, 4, 8, 8)
+        outer.setSpacing(14)
 
         title = QLabel("Welcome back")
         title.setObjectName("PageTitle")
@@ -1422,7 +1480,7 @@ class HomePage(QWidget):
         outer.addWidget(subtitle)
 
         stats = QHBoxLayout()
-        stats.setSpacing(14)
+        stats.setSpacing(12)
         self.stats = [
             StatCard(0, "Total items"),
             StatCard(0, "Categories"),
@@ -1439,8 +1497,8 @@ class HomePage(QWidget):
         category_frame = QFrame()
         category_frame.setObjectName("FormCard")
         category_box = QVBoxLayout(category_frame)
-        category_box.setContentsMargins(18, 16, 18, 16)
-        category_box.setSpacing(10)
+        category_box.setContentsMargins(14, 14, 14, 14)
+        category_box.setSpacing(8)
         category_heading = QHBoxLayout()
         category_heading.addWidget(styled_label("Categories", "SectionTitle"))
         category_heading.addStretch()
@@ -1453,8 +1511,8 @@ class HomePage(QWidget):
         recent = QFrame()
         recent.setObjectName("FormCard")
         recent_box = QVBoxLayout(recent)
-        recent_box.setContentsMargins(18, 16, 18, 16)
-        recent_box.setSpacing(10)
+        recent_box.setContentsMargins(16, 14, 16, 14)
+        recent_box.setSpacing(8)
         recent_box.addWidget(styled_label("Recently worn", "SectionTitle"))
         self.recent_layout = QVBoxLayout()
         self.recent_layout.setSpacing(7)
@@ -1777,8 +1835,8 @@ class OutfitBuilderPage(QWidget):
 
     def build_ui(self):
         root = QVBoxLayout(self)
-        root.setContentsMargins(16, 6, 16, 12)
-        root.setSpacing(12)
+        root.setContentsMargins(14, 4, 14, 10)
+        root.setSpacing(10)
 
         title = QLabel("Outfit Builder")
         title.setObjectName("PageTitle")
@@ -1939,8 +1997,8 @@ class SavedOutfitsPage(QWidget):
 
     def build_ui(self):
         root = QVBoxLayout(self)
-        root.setContentsMargins(16, 10, 16, 14)
-        root.setSpacing(14)
+        root.setContentsMargins(14, 8, 14, 12)
+        root.setSpacing(12)
 
         header = QHBoxLayout()
         heading = QVBoxLayout()
@@ -2372,7 +2430,7 @@ class StatsPage(QWidget):
 
     def build_ui(self):
         root = QVBoxLayout(self)
-        root.setContentsMargins(12, 10, 14, 14)
+        root.setContentsMargins(10, 8, 12, 12)
         root.setSpacing(16)
 
         header = QHBoxLayout()
@@ -2759,11 +2817,14 @@ class ClothingFormPage(QWidget):
         for c in self.main_window.repository.categories: self.category.addItem(display_category_name(c.name), c.name)
         self.category.blockSignals(False)
         if editing:
-            self.title.setText("Edit Clothing"); self.name.setText(editing.name); self.color.setText(editing.color); self.description.setPlainText(editing.description); self.season.setText(editing.season); self.occasion.setText(editing.occasion); self.style.setText(editing.style); self.formality.setCurrentIndex(max(0, min(4, editing.formality - 1))); self.fit.setCurrentText(editing.fit if editing.fit in FIT_OPTIONS else "Unknown"); self.availability.setCurrentText(editing.availability if editing.availability in AVAILABILITY_OPTIONS else "Available"); _,c=self.main_window.repository.find_item_by_uid(editing.uid); self.category.setCurrentText(c.name if c else "")
+            self.title.setText("Edit Clothing"); self.name.setText(editing.name); self.color.setText(editing.color); self.description.setPlainText(editing.description); self.season.setText(editing.season); self.occasion.setText(editing.occasion); self.style.setText(editing.style); self.formality.setCurrentIndex(max(0, min(4, editing.formality - 1))); self.fit.setCurrentText(editing.fit if editing.fit in FIT_OPTIONS else "Unknown"); self.availability.setCurrentText(editing.availability if editing.availability in AVAILABILITY_OPTIONS else "Available"); _,c=self.main_window.repository.find_item_by_uid(editing.uid);
+            if c:
+                idx = self.category.findData(c.name)
+                self.category.setCurrentIndex(idx if idx >= 0 else 0)
         else:
             self.title.setText("Add Clothing"); self.name.clear(); self.color.clear(); self.description.clear(); self.category.setCurrentText(""); self.season.clear(); self.occasion.clear(); self.style.clear(); self.formality.setCurrentIndex(2); self.fit.setCurrentText("Unknown"); self.availability.setCurrentText("Available")
     def save(self):
-        category=self.category.currentText().strip(); name=self.name.text().strip(); color=self.color.text().strip(); desc=self.description.toPlainText().strip().replace("\n"," ")
+        category_text=self.category.currentText().strip(); category=self.main_window.repository.resolve_category_name(category_text); name=self.name.text().strip(); color=self.color.text().strip(); desc=self.description.toPlainText().strip().replace("\n"," ")
         if not category:
             QMessageBox.warning(self,"Missing information","Category name cannot be empty.")
             return
@@ -2798,7 +2859,7 @@ class SettingsPage(QWidget):
         card.setObjectName("FormCard")
         box = QVBoxLayout(card)
         box.setContentsMargins(20, 18, 20, 18)
-        box.setSpacing(13)
+        box.setSpacing(12)
         box.addWidget(styled_label(title, "SectionTitle"))
         if subtitle:
             hint = styled_label(subtitle, "SectionMuted")
@@ -2820,8 +2881,8 @@ class SettingsPage(QWidget):
 
     def build_ui(self):
         root = QVBoxLayout(self)
-        root.setContentsMargins(10, 8, 12, 12)
-        root.setSpacing(14)
+        root.setContentsMargins(8, 4, 8, 8)
+        root.setSpacing(12)
 
         header = QHBoxLayout()
         title = QLabel("Settings")
@@ -2841,8 +2902,8 @@ class SettingsPage(QWidget):
 
         body = QWidget()
         body_layout = QVBoxLayout(body)
-        body_layout.setContentsMargins(2, 2, 10, 22)
-        body_layout.setSpacing(16)
+        body_layout.setContentsMargins(2, 2, 8, 18)
+        body_layout.setSpacing(14)
 
         # Appearance
         appearance, a = self._card("Appearance", "Choose how WARDROBE looks on this computer.")
@@ -2864,6 +2925,13 @@ class SettingsPage(QWidget):
         self._add_setting_row(b, "Delete confirmation", self.confirm_delete)
         self._add_setting_row(b, "Monthly reset", self.auto_monthly)
         body_layout.addWidget(behavior)
+
+        # Categories
+        categories_card, cg = self._card("Categories", "Manage your wardrobe categories. Removing a category also removes its clothing items and dependent outfit entries after confirmation.")
+        self.category_manager_layout = QVBoxLayout()
+        self.category_manager_layout.setSpacing(7)
+        cg.addLayout(self.category_manager_layout)
+        body_layout.addWidget(categories_card)
 
         # Wear statistics
         statistics, st = self._card("Wear statistics", "Statistics can be reset without deleting clothing, favorites, or saved outfits.")
@@ -3008,6 +3076,54 @@ class SettingsPage(QWidget):
         self.auto_monthly.blockSignals(True)
         self.auto_monthly.setChecked(self.main_window.auto_monthly_reset)
         self.auto_monthly.blockSignals(False)
+        self.refresh_categories()
+
+    def refresh_categories(self):
+        clear_layout(self.category_manager_layout)
+        categories = sorted(self.main_window.repository.categories, key=lambda c: display_category_name(c.name).casefold())
+        if not categories:
+            self.category_manager_layout.addWidget(styled_label("No categories yet.", "SectionMuted"))
+            return
+        for category in categories:
+            row = QHBoxLayout()
+            row.setSpacing(10)
+            label = QLabel(display_category_name(category.name))
+            label.setObjectName("FeatureTitle")
+            count = styled_label(f"{category.count} item" + ("" if category.count == 1 else "s"), "SectionMuted")
+            info = QVBoxLayout()
+            info.setSpacing(1)
+            info.addWidget(label)
+            info.addWidget(count)
+            row.addLayout(info, 1)
+            delete = make_button("Delete", "Delete")
+            delete.setToolTip("Delete this category and its clothing items")
+            delete.clicked.connect(lambda _, name=category.name: self.delete_category(name))
+            row.addWidget(delete, 0, Qt.AlignVCenter)
+            self.category_manager_layout.addLayout(row)
+
+    def delete_category(self, category_name):
+        category = self.main_window.repository.get_category(category_name)
+        if category is None:
+            self.refresh_categories()
+            return
+        shown = display_category_name(category.name)
+        count = category.count
+        details = (
+            f"Delete {shown}?\n\n"
+            f"This will permanently remove {count} clothing item{'' if count == 1 else 's'}, "
+            "related wear history, favorites, and any saved-outfit entries that depend on them."
+        )
+        answer = QMessageBox.question(self, "Delete category", details, QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if answer != QMessageBox.Yes:
+            return
+        try:
+            deleted_name, removed_count = self.main_window.repository.delete_category(category.name)
+        except Exception as e:
+            QMessageBox.critical(self, "Delete category failed", str(e))
+            return
+        self.main_window.refresh_visible_page()
+        self.refresh()
+        self.main_window.notify(f"Deleted {display_category_name(deleted_name)} and {removed_count} item" + ("." if removed_count == 1 else "s."))
 
     def open_folder(self):
         BACKUP_DIR.mkdir(parents=True, exist_ok=True)
@@ -3020,9 +3136,37 @@ def empty_state(title, text):
 
 class MainWindow(QMainWindow):
     def __init__(self):
-        super().__init__(); self.setWindowTitle("WARDROBE"); self.resize(1280,860); self.setMinimumSize(1000,680)
+        super().__init__()
+        self.setWindowTitle("WARDROBE")
+        self._fit_initial_window_to_screen()
         if APP_ICON_FILE.exists(): self.setWindowIcon(QIcon(str(APP_ICON_FILE)))
         self.repository=WardrobeRepository(DB_FILE, LEGACY_DATA_FILE); self.repository.on_internal_save=self._on_internal_save; self.settings=QSettings("WARDROBE","Wardrobe"); self.dark_mode=self.settings.value("dark_mode",False,type=bool); self.confirm_delete=self.settings.value("confirm_delete",True,type=bool); self.auto_monthly_reset=self.settings.value("auto_monthly_reset",True,type=bool); self.current_category=None; self.previous_page=None; self._loading_external=False; self._ignore_watcher_until=0.0; self._refreshing_visible_page=False; self.build_ui(); self.apply_theme(); self.setup_shortcuts(); self.month_check_timer=QTimer(self); self.month_check_timer.setInterval(60 * 60 * 1000); self.month_check_timer.timeout.connect(self.check_monthly_statistics); self.month_check_timer.start(); self.check_monthly_statistics(); self.show_home()
+
+    def _fit_initial_window_to_screen(self):
+        """Choose a usable initial size for the current Windows display/DPI."""
+        screen = QApplication.primaryScreen()
+        if screen is None:
+            self.setMinimumSize(900, 600)
+            self.resize(1180, 760)
+            return
+
+        available = screen.availableGeometry()
+        width = max(760, int(available.width() * 0.92))
+        height = max(520, int(available.height() * 0.92))
+        width = min(1280, width)
+        height = min(860, height)
+
+        min_width = min(1000, width)
+        min_height = min(680, height)
+        self.setMinimumSize(min_width, min_height)
+        self.resize(max(min_width, width), max(min_height, height))
+
+        # Center the window on the usable desktop area instead of leaving it
+        # partially outside the screen after Windows DPI scaling changes.
+        frame = self.frameGeometry()
+        frame.moveCenter(available.center())
+        self.move(frame.topLeft())
+
     def build_ui(self):
         central=QWidget(); outer=QHBoxLayout(central); outer.setContentsMargins(0,0,0,0); outer.setSpacing(0)
         sidebar=QFrame(); sidebar.setObjectName("Sidebar"); sidebar.setFixedWidth(250); side=QVBoxLayout(sidebar); side.setContentsMargins(18,24,18,18); side.setSpacing(7)
@@ -3038,20 +3182,40 @@ class MainWindow(QMainWindow):
     @staticmethod
     def nav_button(text, icon_name=None):
         button=QPushButton(text); button.setObjectName("NavButton"); button.setCursor(Qt.PointingHandCursor)
-        if icon_name:
-            icon_path = ICON_DIR / f"{icon_name}.png"
-            if not icon_path.exists():
-                fallback = BASE_DIR / "icons" / f"{icon_name}.png"
-                if fallback.exists():
-                    icon_path = fallback
-            if icon_path.exists():
-                icon = QIcon(str(icon_path))
-                if not icon.isNull():
-                    button.setIcon(icon)
-                    button.setIconSize(QSize(19, 19))
+        button.setProperty("icon_name", icon_name or "")
+        button.setIconSize(QSize(20, 20))
         return button
+
+    def _tinted_nav_icon(self, icon_name, color):
+        if not icon_name:
+            return QIcon()
+        icon_path = ICON_DIR / f"{icon_name}.png"
+        if not icon_path.exists():
+            return QIcon()
+        source = QPixmap(str(icon_path))
+        if source.isNull():
+            return QIcon()
+        pixmap = source.scaled(QSize(48, 48), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        painter = QPainter(pixmap)
+        painter.setCompositionMode(QPainter.CompositionMode_SourceIn)
+        painter.fillRect(pixmap.rect(), QColor(color))
+        painter.end()
+        return QIcon(pixmap)
+
+    def _refresh_nav_icons(self):
+        normal_color = DARK_COLORS["nav_text"] if self.dark_mode else LIGHT_COLORS["nav_text"]
+        active_color = DARK_COLORS["accent_dark"] if self.dark_mode else LIGHT_COLORS["accent_dark"]
+        buttons = (self.home_button,self.items_button,self.unused_button,self.builder_button,self.outfits_button,self.today_button,self.stats_button,self.settings_button,self.add_button)
+        for button in buttons:
+            icon_name = button.property("icon_name") or ""
+            color = active_color if button.objectName() == "NavButtonActive" else normal_color
+            button.setIcon(self._tinted_nav_icon(icon_name, color))
+            button.setIconSize(QSize(20, 20))
+
     def apply_theme(self):
         QApplication.instance().setStyleSheet(make_stylesheet(DARK_COLORS if self.dark_mode else LIGHT_COLORS))
+        if hasattr(self, "home_button"):
+            self._refresh_nav_icons()
     def set_dark_mode(self, enabled):
         self.dark_mode=bool(enabled); self.settings.setValue("dark_mode",self.dark_mode); self.apply_theme(); self.settings_page.dark.blockSignals(True); self.settings_page.dark.setChecked(self.dark_mode); self.settings_page.dark.blockSignals(False)
     def set_confirm_delete(self, enabled): self.confirm_delete=bool(enabled); self.settings.setValue("confirm_delete",self.confirm_delete)
@@ -3219,6 +3383,7 @@ class MainWindow(QMainWindow):
     def set_active(self,active):
         for button in (self.home_button,self.items_button,self.unused_button,self.builder_button,self.outfits_button,self.today_button,self.stats_button,self.settings_button,self.add_button):
             button.setObjectName("NavButtonActive" if button is active else "NavButton"); button.style().unpolish(button); button.style().polish(button); button.update()
+        self._refresh_nav_icons()
     def setup_watcher(self):
         # SQLite is the authoritative local data source; no filesystem watcher is needed.
         return None
