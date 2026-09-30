@@ -16,8 +16,8 @@ import urllib.error
 from datetime import datetime
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QTimer, Signal, QSettings, QUrl
-from PySide6.QtGui import QDesktopServices, QKeySequence, QShortcut
+from PySide6.QtCore import Qt, QTimer, Signal, QSettings, QUrl, QSize
+from PySide6.QtGui import QDesktopServices, QKeySequence, QShortcut, QIcon
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QGridLayout, QLabel, QPushButton, QFrame, QScrollArea, QLineEdit,
@@ -27,7 +27,11 @@ from PySide6.QtWidgets import (
 
 
 BASE_DIR = Path(__file__).resolve().parent
-LEGACY_DATA_FILE = BASE_DIR / "gardirob.txt"
+# PyInstaller one-dir builds may place bundled resources under an _internal
+# directory. Using _MEIPASS when frozen keeps bundled icons/config reachable
+# from both the PyCharm source run and the packaged EXE.
+RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", BASE_DIR))
+LEGACY_DATA_FILE = RESOURCE_DIR / "gardirob.txt"
 
 # Keep user data outside the application folder so installed/upgraded Windows
 # builds can replace the executable without touching the user's wardrobe data.
@@ -42,7 +46,9 @@ BACKUP_DIR = APP_DATA_DIR / "backups"
 LOG_DIR = APP_DATA_DIR / "logs"
 LEGACY_ARCHIVE_DIR = APP_DATA_DIR / "legacy"
 APP_VERSION = os.environ.get("WARDROBE_APP_VERSION", "1.0.0").strip() or "1.0.0"
-UPDATE_CONFIG_FILE = BASE_DIR / "update_config.json"
+UPDATE_CONFIG_FILE = RESOURCE_DIR / "update_config.json"
+ICON_DIR = RESOURCE_DIR / "icons"
+APP_ICON_FILE = RESOURCE_DIR / "wardrobe.ico"
 
 def _load_update_repository():
     configured = os.environ.get("WARDROBE_GITHUB_REPO", "").strip()
@@ -170,12 +176,13 @@ QFrame#Sidebar {{ background: {c['sidebar']}; border-right: 1px solid {c['border
 QLabel#Brand {{ font-size: 22px; font-weight: 800; color: {c['text']}; }}
 QLabel#BrandMark {{ background: {c['accent']}; color: {c['white']}; border-radius: 13px; font-size: 16px; font-weight: 800; }}
 QLabel#NavSection {{ color: {c['muted']}; font-size: 11px; font-weight: 700; }}
-QPushButton#NavButton, QPushButton#NavButtonActive {{ border: none; border-radius: 10px; text-align: left; padding: 10px 13px; font-weight: 650; }}
+QPushButton#NavButton, QPushButton#NavButtonActive {{ border: none; border-radius: 11px; text-align: left; padding: 10px 14px; min-height: 42px; font-weight: 650; }}
 QPushButton#NavButton {{ background: transparent; color: {c['nav_text']}; }}
 QPushButton#NavButton:hover {{ background: {c['nav_hover']}; color: {c['text']}; }}
 QPushButton#NavButtonActive {{ background: {c['accent_soft']}; color: {c['accent_dark']}; }}
-QLabel#PageTitle {{ font-size: 28px; font-weight: 800; }}
+QLabel#PageTitle {{ font-size: 27px; font-weight: 800; letter-spacing: -0.2px; }}
 QLabel#Subtitle, QLabel#SectionMuted, QLabel#SmallMuted, QLabel#Status {{ color: {c['muted']}; }}
+QLabel#Subtitle {{ font-size: 13px; }}
 QLabel#Status {{ font-size: 11px; }}
 QLineEdit#GlobalSearch, QLineEdit#Search, QLineEdit#Input, QTextEdit#Input {{ background: {c['input']}; color: {c['input_text']}; border: 1px solid {c['border']}; border-radius: 12px; padding: 10px 13px; selection-background-color: {c['accent_soft']}; selection-color: {c['text']}; }}
 QComboBox#Input {{ background: {c['input']}; color: {c['input_text']}; border: 1px solid {c['border']}; border-radius: 12px; padding: 0 42px 0 13px; min-height: 44px; selection-background-color: {c['accent_soft']}; selection-color: {c['text']}; }}
@@ -185,13 +192,13 @@ QComboBox#Input::drop-down {{ subcontrol-origin: padding; subcontrol-position: t
 QComboBox#Input QAbstractItemView {{ background: {c['input']}; color: {c['text']}; border: 1px solid {c['border']}; border-radius: 10px; padding: 6px; selection-background-color: {c['accent_soft']}; selection-color: {c['text']}; outline: none; }}
 QComboBox#Input QAbstractItemView::item {{ min-height: 34px; padding: 7px 10px; border-radius: 8px; }}
 QComboBox#Input QAbstractItemView::item:hover {{ background: {c['hover']}; }}
-QFrame#StatCard, QFrame#CategoryCard, QFrame#ItemCard, QFrame#FormCard, QFrame#FeatureCard, QFrame#OutfitCard, QFrame#TodayHero {{ background: {c['panel']}; border: 1px solid {c['border']}; border-radius: 15px; }}
+QFrame#StatCard, QFrame#CategoryCard, QFrame#ItemCard, QFrame#FormCard, QFrame#FeatureCard, QFrame#OutfitCard, QFrame#TodayHero {{ background: {c['panel']}; border: 1px solid {c['border']}; border-radius: 16px; }}
 QFrame#CategoryCard:hover, QFrame#ItemCard:hover, QFrame#OutfitCard:hover, QFrame#FeatureCard:hover {{ background: {c['hover']}; border: 1px solid {c['soft_hover_border']}; }}
 QLabel#StatNumber {{ font-size: 29px; font-weight: 800; }}
 QLabel#StatLabel {{ color: {c['muted']}; font-size: 11px; font-weight: 700; }}
 QLabel#StatNumberCompact {{ font-size: 22px; font-weight: 800; }}
 QLabel#StatLabelCompact {{ color: {c['muted']}; font-size: 11px; font-weight: 700; }}
-QLabel#SectionTitle {{ font-size: 16px; font-weight: 750; }}
+QLabel#SectionTitle {{ font-size: 16px; font-weight: 750; letter-spacing: -0.1px; }}
 QLabel#CategoryName {{ font-size: 15px; font-weight: 700; }}
 QLabel#CategoryCount, QLabel#CategoryDetails, QLabel#CategoryMetric, QLabel#ItemDescription {{ color: {c['muted']}; }}
 QLabel#CategoryMetric, QLabel#CategoryCount, QLabel#CategoryDetails {{ font-size: 12px; font-weight: 600; }}
@@ -217,7 +224,7 @@ QPushButton#Secondary:pressed {{ background: {c['border']}; }}
 QPushButton#Delete {{ background: {c['danger_soft']}; color: {c['danger']}; border: 1px solid transparent; border-radius: 11px; padding: 0 14px; min-height: 40px; font-weight: 650; }}
 QPushButton#Delete:hover {{ background: {c['delete_hover']}; }}
 QPushButton#Back, QPushButton#FilterClear {{ background: transparent; color: {c['accent_dark']}; border: none; padding: 7px 2px; font-weight: 650; }}
-QPushButton#IconButton {{ background: {c['secondary']}; color: {c['secondary_text']}; border: 1px solid {c['border']}; border-radius: 10px; min-width: 34px; max-width: 34px; min-height: 34px; max-height: 34px; font-size: 16px; }}
+QPushButton#IconButton {{ background: {c['secondary']}; color: {c['secondary_text']}; border: 1px solid {c['border']}; border-radius: 10px; min-width: 36px; max-width: 36px; min-height: 36px; max-height: 36px; font-size: 16px; }}
 QPushButton#IconButton:hover {{ background: {c['accent_soft']}; color: {c['accent_dark']}; border-color: {c['soft_hover_border']}; }}
 QPushButton#Back, QPushButton#FilterClear {{ background: transparent; color: {c['accent_dark']}; border: none; padding: 6px 0; font-weight: 650; }}
 QFrame#UsageTrack {{ background: {c['track']}; border: none; border-radius: 6px; min-height: 12px; max-height: 12px; }}
@@ -1404,8 +1411,8 @@ class HomePage(QWidget):
 
     def build_ui(self):
         outer = QVBoxLayout(self)
-        outer.setContentsMargins(6, 4, 8, 8)
-        outer.setSpacing(14)
+        outer.setContentsMargins(8, 8, 12, 12)
+        outer.setSpacing(16)
 
         title = QLabel("Welcome back")
         title.setObjectName("PageTitle")
@@ -1415,7 +1422,7 @@ class HomePage(QWidget):
         outer.addWidget(subtitle)
 
         stats = QHBoxLayout()
-        stats.setSpacing(12)
+        stats.setSpacing(14)
         self.stats = [
             StatCard(0, "Total items"),
             StatCard(0, "Categories"),
@@ -1432,8 +1439,8 @@ class HomePage(QWidget):
         category_frame = QFrame()
         category_frame.setObjectName("FormCard")
         category_box = QVBoxLayout(category_frame)
-        category_box.setContentsMargins(14, 14, 14, 14)
-        category_box.setSpacing(8)
+        category_box.setContentsMargins(18, 16, 18, 16)
+        category_box.setSpacing(10)
         category_heading = QHBoxLayout()
         category_heading.addWidget(styled_label("Categories", "SectionTitle"))
         category_heading.addStretch()
@@ -1446,8 +1453,8 @@ class HomePage(QWidget):
         recent = QFrame()
         recent.setObjectName("FormCard")
         recent_box = QVBoxLayout(recent)
-        recent_box.setContentsMargins(16, 14, 16, 14)
-        recent_box.setSpacing(8)
+        recent_box.setContentsMargins(18, 16, 18, 16)
+        recent_box.setSpacing(10)
         recent_box.addWidget(styled_label("Recently worn", "SectionTitle"))
         self.recent_layout = QVBoxLayout()
         self.recent_layout.setSpacing(7)
@@ -1770,8 +1777,8 @@ class OutfitBuilderPage(QWidget):
 
     def build_ui(self):
         root = QVBoxLayout(self)
-        root.setContentsMargins(14, 4, 14, 10)
-        root.setSpacing(10)
+        root.setContentsMargins(16, 6, 16, 12)
+        root.setSpacing(12)
 
         title = QLabel("Outfit Builder")
         title.setObjectName("PageTitle")
@@ -1932,8 +1939,8 @@ class SavedOutfitsPage(QWidget):
 
     def build_ui(self):
         root = QVBoxLayout(self)
-        root.setContentsMargins(14, 8, 14, 12)
-        root.setSpacing(12)
+        root.setContentsMargins(16, 10, 16, 14)
+        root.setSpacing(14)
 
         header = QHBoxLayout()
         heading = QVBoxLayout()
@@ -2365,7 +2372,7 @@ class StatsPage(QWidget):
 
     def build_ui(self):
         root = QVBoxLayout(self)
-        root.setContentsMargins(10, 8, 12, 12)
+        root.setContentsMargins(12, 10, 14, 14)
         root.setSpacing(16)
 
         header = QHBoxLayout()
@@ -2791,7 +2798,7 @@ class SettingsPage(QWidget):
         card.setObjectName("FormCard")
         box = QVBoxLayout(card)
         box.setContentsMargins(20, 18, 20, 18)
-        box.setSpacing(12)
+        box.setSpacing(13)
         box.addWidget(styled_label(title, "SectionTitle"))
         if subtitle:
             hint = styled_label(subtitle, "SectionMuted")
@@ -2813,8 +2820,8 @@ class SettingsPage(QWidget):
 
     def build_ui(self):
         root = QVBoxLayout(self)
-        root.setContentsMargins(8, 4, 8, 8)
-        root.setSpacing(12)
+        root.setContentsMargins(10, 8, 12, 12)
+        root.setSpacing(14)
 
         header = QHBoxLayout()
         title = QLabel("Settings")
@@ -2834,8 +2841,8 @@ class SettingsPage(QWidget):
 
         body = QWidget()
         body_layout = QVBoxLayout(body)
-        body_layout.setContentsMargins(2, 2, 8, 18)
-        body_layout.setSpacing(14)
+        body_layout.setContentsMargins(2, 2, 10, 22)
+        body_layout.setSpacing(16)
 
         # Appearance
         appearance, a = self._card("Appearance", "Choose how WARDROBE looks on this computer.")
@@ -3014,12 +3021,13 @@ def empty_state(title, text):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__(); self.setWindowTitle("WARDROBE"); self.resize(1280,860); self.setMinimumSize(1000,680)
+        if APP_ICON_FILE.exists(): self.setWindowIcon(QIcon(str(APP_ICON_FILE)))
         self.repository=WardrobeRepository(DB_FILE, LEGACY_DATA_FILE); self.repository.on_internal_save=self._on_internal_save; self.settings=QSettings("WARDROBE","Wardrobe"); self.dark_mode=self.settings.value("dark_mode",False,type=bool); self.confirm_delete=self.settings.value("confirm_delete",True,type=bool); self.auto_monthly_reset=self.settings.value("auto_monthly_reset",True,type=bool); self.current_category=None; self.previous_page=None; self._loading_external=False; self._ignore_watcher_until=0.0; self._refreshing_visible_page=False; self.build_ui(); self.apply_theme(); self.setup_shortcuts(); self.month_check_timer=QTimer(self); self.month_check_timer.setInterval(60 * 60 * 1000); self.month_check_timer.timeout.connect(self.check_monthly_statistics); self.month_check_timer.start(); self.check_monthly_statistics(); self.show_home()
     def build_ui(self):
         central=QWidget(); outer=QHBoxLayout(central); outer.setContentsMargins(0,0,0,0); outer.setSpacing(0)
         sidebar=QFrame(); sidebar.setObjectName("Sidebar"); sidebar.setFixedWidth(250); side=QVBoxLayout(sidebar); side.setContentsMargins(18,24,18,18); side.setSpacing(7)
         br=QHBoxLayout(); br.addWidget(styled_label("WARDROBE", "Brand")); br.addStretch(); side.addLayout(br); side.addSpacing(22); side.addWidget(styled_label("MENU", "NavSection"))
-        self.home_button=self.nav_button("Home"); self.items_button=self.nav_button("All Clothing"); self.unused_button=self.nav_button("Unused"); self.builder_button=self.nav_button("Outfit Builder"); self.outfits_button=self.nav_button("Saved Outfits"); self.today_button=self.nav_button("What should I wear?"); self.stats_button=self.nav_button("Wear Statistics"); self.settings_button=self.nav_button("⚙  Settings"); self.add_button=self.nav_button("+  Add Clothing")
+        self.home_button=self.nav_button("Home", "home"); self.items_button=self.nav_button("All Clothing", "clothing"); self.unused_button=self.nav_button("Unused", "unused"); self.builder_button=self.nav_button("Outfit Builder", "builder"); self.outfits_button=self.nav_button("Saved Outfits", "saved"); self.today_button=self.nav_button("What should I wear?", "today"); self.stats_button=self.nav_button("Wear Statistics", "stats"); self.settings_button=self.nav_button("Settings", "settings"); self.add_button=self.nav_button("Add Clothing", "add")
         for button, callback in ((self.home_button,self.show_home),(self.items_button,self.show_all_items),(self.unused_button,self.show_unused),(self.builder_button,self.show_builder),(self.outfits_button,self.show_saved_outfits),(self.today_button,self.show_today),(self.stats_button,self.show_stats),(self.add_button,self.show_add)):
             button.clicked.connect(callback); side.addWidget(button)
         side.addStretch(); self.settings_button.clicked.connect(self.show_settings); side.addWidget(self.settings_button); outer.addWidget(sidebar)
@@ -3028,8 +3036,20 @@ class MainWindow(QMainWindow):
         self.home_page=HomePage(self); self.items_page=AllItemsPage(self); self.unused_page=UnusedPage(self); self.category_page=CategoryPage(self); self.builder_page=OutfitBuilderPage(self); self.outfits_page=SavedOutfitsPage(self); self.today_page=TodayPage(self); self.stats_page=StatsPage(self); self.form_page=ClothingFormPage(self); self.settings_page=SettingsPage(self)
         for page in (self.home_page,self.items_page,self.unused_page,self.category_page,self.builder_page,self.outfits_page,self.today_page,self.stats_page,self.form_page,self.settings_page): self.stack.addWidget(page)
     @staticmethod
-    def nav_button(text):
-        button=QPushButton(text); button.setObjectName("NavButton"); button.setCursor(Qt.PointingHandCursor); return button
+    def nav_button(text, icon_name=None):
+        button=QPushButton(text); button.setObjectName("NavButton"); button.setCursor(Qt.PointingHandCursor)
+        if icon_name:
+            icon_path = ICON_DIR / f"{icon_name}.png"
+            if not icon_path.exists():
+                fallback = BASE_DIR / "icons" / f"{icon_name}.png"
+                if fallback.exists():
+                    icon_path = fallback
+            if icon_path.exists():
+                icon = QIcon(str(icon_path))
+                if not icon.isNull():
+                    button.setIcon(icon)
+                    button.setIconSize(QSize(19, 19))
+        return button
     def apply_theme(self):
         QApplication.instance().setStyleSheet(make_stylesheet(DARK_COLORS if self.dark_mode else LIGHT_COLORS))
     def set_dark_mode(self, enabled):
@@ -3348,6 +3368,7 @@ def main():
     prepare_user_data()
     sys.excepthook = log_exception
     app=QApplication(sys.argv)
+    if APP_ICON_FILE.exists(): app.setWindowIcon(QIcon(str(APP_ICON_FILE)))
     app.setStyle("Fusion")
     app.setApplicationName("WARDROBE")
     app.setOrganizationName("WARDROBE")

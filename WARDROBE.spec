@@ -5,20 +5,24 @@ ROOT = Path(SPECPATH)
 
 block_cipher = None
 
+# Explicitly bundle every runtime resource used by WARDROBE. The folder is
+# copied as-is so the packaged EXE can load PNG sidebar icons from RESOURCE_DIR.
+datas = [
+    (str(ROOT / 'update_config.json'), '.'),
+    (str(ROOT / 'wardrobe.ico'), '.'),
+    (str(ROOT / 'icons'), 'icons'),
+]
+
 a = Analysis(
     [str(ROOT / 'main.py')],
     pathex=[str(ROOT)],
     binaries=[],
-    datas=[
-        (str(ROOT / 'update_config.json'), '.'),
-    ],
+    datas=datas,
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
     excludes=[],
-    win_no_prefer_redirects=False,
-    win_private_assemblies=False,
     noarchive=False,
 )
 
@@ -36,6 +40,7 @@ exe = EXE(
     upx=False,
     console=False,
     disable_windowed_traceback=False,
+    icon=str(ROOT / 'wardrobe.ico'),
 )
 
 coll = COLLECT(
