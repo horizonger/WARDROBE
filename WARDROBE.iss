@@ -8,7 +8,6 @@
 #define AppPublisher "WARDROBE"
 #define AppExeName "WARDROBE.exe"
 #define SourceDir AddBackslash(SourcePath) + "dist\WARDROBE"
-#define IconFile AddBackslash(SourceDir) + "wardrobe.ico"
 
 [Setup]
 AppId={{7F5A3D61-0B8A-4B0D-9F26-0D6B19B7D5A1}
@@ -26,10 +25,10 @@ SolidCompression=yes
 WizardStyle=modern
 ArchitecturesInstallIn64BitMode=x64compatible
 PrivilegesRequired=admin
-SetupIconFile={#IconFile}
+SetupIconFile=wardrobe.ico
 CloseApplications=yes
 RestartApplications=yes
-UninstallDisplayIcon={app}\{#AppExeName}
+UninstallDisplayIcon={app}\wardrobe.ico
 
 ; Keep user data in %LOCALAPPDATA%\WARDROBE intact when uninstalling/updating.
 ; The installer only owns the application files under {app}.
@@ -38,10 +37,11 @@ UninstallDisplayIcon={app}\{#AppExeName}
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
-Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional shortcuts:";
+Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional shortcuts:"; Flags: unchecked
 
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "wardrobe.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{autoprograms}\WARDROBE"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; IconFilename: "{app}\wardrobe.ico"; IconIndex: 0
@@ -49,4 +49,3 @@ Name: "{autodesktop}\WARDROBE"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{a
 
 [Run]
 Filename: "{app}\{#AppExeName}"; Description: "Launch WARDROBE"; Flags: nowait postinstall skipifsilent
-
